@@ -41,7 +41,7 @@ Here is the JSON structure:
     }
 
     
-        ]
-    }
+    ]
+ }
         -  
     
