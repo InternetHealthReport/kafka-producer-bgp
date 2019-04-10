@@ -13,7 +13,8 @@ from _pybgpstream import BGPStream, BGPRecord, BGPElem
 from datetime import datetime
 import json
 
-producer = KafkaProducer(bootstrap_servers='localhost:9092')
+producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
+    value_serializer=lambda v: json.dumps(v).encode('utf-8'))
 
 def dt2ts(dt):
     return int((dt - datetime(1970, 1, 1)).total_seconds())
@@ -76,7 +77,9 @@ def getElementDict(element):
     return elementDict
 
 def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
+
     stream = getBGPStream("ribs",AF,[collector],includedPeers,includedPrefix,startts,endts)
+    topicName = collector + "RIBHistoric"
     
     stream.start()
 
@@ -98,20 +101,23 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
             completeRecord["elements"].append(elementDict)
             elem = rec.get_next_elem()
 
-        recordAsString = json.dumps(completeRecord)
+        # recordAsString = json.dumps(completeRecord)
         #print("Here is the record as a string: ",recordAsString)
 
-        recordAsBytes = bytes(recordAsString)
+        # recordAsBytes = bytes(recordAsString)
 
-        topicName = collector + "RIBHistoric"
         #print("Topic: ",topicName," ,Time: ",recordTimeStamp)
 
-        producer.send(topicName,recordAsBytes,timestamp_ms=recordTimeStamp)
+        producer.send(topicName, completeRecord, timestamp_ms=recordTimeStamp)
         #producer.send(topicName,recordAsBytes)
-        print("Pushed a record to ",topicName," with timestamp ",recordTimeStamp)
+        # print("Pushed a record to ",topicName," with timestamp ",recordTimeStamp)
+
+    producer.flush()
 
 def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
+
     stream = getBGPStream("updates",AF,[collector],includedPeers,includedPrefix,startts,endts)
+    topicName = collector + "UpdateHistoric"
     
     stream.start()
 
@@ -133,21 +139,24 @@ def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,en
             completeRecord["elements"].append(elementDict)
             elem = rec.get_next_elem()
 
-        recordAsString = json.dumps(completeRecord)
+        # recordAsString = json.dumps(completeRecord)
         #print("Here is the record as a string: ",recordAsString)
 
-        recordAsBytes = bytes(recordAsString)
+        # recordAsBytes = bytes(recordAsString)
 
-        topicName = collector + "UpdateHistoric"
         #print("Topic: ",topicName," ,Time: ",recordTimeStamp)
 
-        producer.send(topicName,recordAsBytes,timestamp_ms=recordTimeStamp)
+        producer.send(topicName, completeRecord, timestamp_ms=recordTimeStamp)
         #producer.send(topicName,recordAsBytes)
-        print("Pushed a record to ",topicName," with timestamp ",recordTimeStamp)
+        # print("Pushed a record to ",topicName," with timestamp ",recordTimeStamp)
+
+    producer.flush()
 
 for collector in collectors:
     print("A collector initiated")
+    print("Downloading RIB data")
     pushRIBData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
+    print("Downloading UPDATE data")
     pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
 
 
