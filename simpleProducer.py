@@ -14,7 +14,8 @@ from datetime import datetime
 import json
 
 producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
-    value_serializer=lambda v: json.dumps(v).encode('utf-8'))
+    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
+    batch_size=65536,linger_ms=4000,compression_type='gzip')
 
 def dt2ts(dt):
     return int((dt - datetime(1970, 1, 1)).total_seconds())
