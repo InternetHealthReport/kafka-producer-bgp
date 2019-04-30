@@ -1,10 +1,3 @@
-#for just route-views.wide
-
-collectors = ["route-views.wide"]
-timeStart = "2017-11-06T16:00:00"
-timeEnd = "2017-11-06T22:00:00"
-
-AF = 4
 includedPeers = []
 includedPrefix = []
 
@@ -153,11 +146,54 @@ def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,en
 
     producer.flush()
 
-for collector in collectors:
-    print("A collector initiated")
-    print("Downloading RIB data")
-    pushRIBData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
-    print("Downloading UPDATE data")
-    pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
+import sys
+import argparse
+
+if __name__ == '__main__':
+
+    text = "This script pushes BGPStream data against specified collector(s) for the specified time window to Kafka topic(s)."
+
+    parser = argparse.ArgumentParser(description = text)  
+    parser.add_argument("--collector","-c",help="Choose collector(s) to push data for")
+    parser.add_argument("--startTime","-s",help="Choose start time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
+    parser.add_argument("--endTime","-e",help="Choose end time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
+    parser.add_argument("--af","-a",help="Choose 4 for ipv4, 6 for ipv6")
+
+    args = parser.parse_args() 
+
+    #initialize collectors
+    collectors = []
+    if args.collector:
+        collectorList = args.collector.split(",")
+        collectors = collectorList
+    else:
+        sys.exit("Collector(s) not specified")
+
+    #initialize time to start
+    timeStart = ""
+    if args.startTime:
+        timeStart = args.startTime
+    else:
+        sys.exit("Start time not specified")
+
+    #initialize time to end
+    timeEnd = ""
+    if args.endTime:
+        timeEnd = args.endTime
+    else:
+        sys.exit("End time not specified")
+
+    #initialize af
+    if args.af:
+        AF = args.af
+    else:
+        AF = 4
+
+    for collector in collectors:
+        print("A collector initiated")
+        print("Downloading RIB data")
+        pushRIBData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
+        print("Downloading UPDATE data")
+        pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
 
 
