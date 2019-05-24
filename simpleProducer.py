@@ -41,6 +41,11 @@ def getBGPStream(recordType,AF,collectors,includedPeers,includedPrefix,startts,e
     endts = datetime.strptime(endts+"UTC", "%Y-%m-%dT%H:%M:%S%Z")
     endts = dt2ts(endts)
 
+    currentts = dt2ts(datetime.now())
+
+    if endts > currentts:
+        stream.set_live_mode()
+
     stream.parse_filter_string(bgprFilter)
     stream.add_interval_filter(startts, endts)
 
