@@ -2,14 +2,15 @@
 This script pushes BGPStream data against specified collector(s) for the specified time window to Kafka topic(s).
 
 ### Example
-You must specify collector name(s) (**-c**), a start time (**-s**) and an end time (**-e**).
+You must specify collector name(s) (**-c**), record type (**-t**), a start time (**-s**) and an end time (**-e**).
 The format for time is **Y-m-dTH:M:S**
+Record type can be RIB or Update
 ```
-$ python simpleProducer.py -c rrc19 -s 2017-11-06T16:00:00 -e 2017-11-06T22:00:00
+$ python simpleProducer.py -c rrc19 -t RIB -s 2017-11-06T16:00:00 -e 2017-11-06T22:00:00
 ```
 
 ### Topic Name
-Topics are separated by collector name, record type (RIB or Update), and whether the data is live (read from RIS Live) or historic (BGPStream data). Each topic name is given by *<collectorName>*+*<RIB or Update>*+*<Live or Historic>*. For example, the separate topic for **historic** **RIB** data for **rrc10** is **rrc10RIBHistoric**.
+Topics are separated by collector name, record type (RIB or Update), and whether the data is live (read from RIS Live) or historic (BGPStream data). Each topic name is given by (collectorName) + (RIB or Update) + (Live or Historic). For example, the separate topic for **historic** **RIB** data for **rrc10** is **rrc10RIBHistoric**.
 
 ### Record Structure
 Each Kafka record is a JSON object against a BGPRecord. Refer to https://bgpstream.caida.org/docs/api/pybgpstream/_pybgpstream.html for details on each data member of BGPRecord and BGPElem
@@ -53,4 +54,5 @@ Here is the JSON structure:
     
     ]
  }
+        -  
     

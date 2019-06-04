@@ -163,6 +163,7 @@ if __name__ == '__main__':
     parser.add_argument("--startTime","-s",help="Choose start time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
     parser.add_argument("--endTime","-e",help="Choose end time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
     parser.add_argument("--af","-a",help="Choose 4 for ipv4, 6 for ipv6")
+    parser.add_argument("--type","-t",help="Choose record type: RIB or Update")
 
     args = parser.parse_args() 
 
@@ -194,11 +195,23 @@ if __name__ == '__main__':
     else:
         AF = 4
 
+    #initialize recordType
+    recordType = ""
+    if args.type:
+        if args.type in ["RIB","Update"]:
+            recordType = args.type
+        else:
+            sys.exit("Incorrect type specified; Choose from RIB or Update")
+    else:
+        sys.exit("Record type not specified")
+
     for collector in collectors:
-        print("A collector initiated")
-        print("Downloading RIB data")
-        pushRIBData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
-        print("Downloading UPDATE data")
-        pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
+        if recordType == "RIB":
+            print("Downloading RIB data for ",collector)
+            pushRIBData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
+        
+        if recordType == "Update":
+            print("Downloading UPDATE data for ",collector)
+            pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
 
 
