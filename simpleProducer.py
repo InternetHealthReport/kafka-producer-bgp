@@ -4,11 +4,11 @@ includedPrefix = []
 from kafka import KafkaProducer
 from _pybgpstream import BGPStream, BGPRecord, BGPElem
 from datetime import datetime
-import json
+import msgpack
 
-producer = KafkaProducer(bootstrap_servers='localhost:9092', acks=0,
-    value_serializer=lambda v: json.dumps(v).encode('utf-8'),
-    batch_size=65536,linger_ms=4000,compression_type='gzip')
+producer = KafkaProducer(bootstrap_servers=['kafka1:9092','kafka2:9092','kafka3:9092'], 
+        acks=0, value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
+        batch_size=65536,linger_ms=4000,compression_type='snappy')
 
 def dt2ts(dt):
     return int((dt - datetime(1970, 1, 1)).total_seconds())
@@ -78,7 +78,7 @@ def getElementDict(element):
 def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
 
     stream = getBGPStream("ribs",AF,[collector],includedPeers,includedPrefix,startts,endts)
-    topicName = collector + "RIBHistoric"
+    topicName = "ihr_" + collector + "_rib"
     
     stream.start()
 
@@ -116,7 +116,7 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
 def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
 
     stream = getBGPStream("updates",AF,[collector],includedPeers,includedPrefix,startts,endts)
-    topicName = collector + "UpdateHistoric"
+    topicName = "ihr_" + collector + "_update"
     
     stream.start()
 

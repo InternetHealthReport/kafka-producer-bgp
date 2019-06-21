@@ -10,7 +10,7 @@ $ python simpleProducer.py -c rrc19 -t RIB -s 2017-11-06T16:00:00 -e 2017-11-06T
 ```
 
 ### Topic Name
-Topics are separated by collector name, record type (RIB or Update), and whether the data is live (read from RIS Live) or historic (BGPStream data). Each topic name is given by (collectorName) + (RIB or Update) + (Live or Historic). For example, the separate topic for **historic** **RIB** data for **rrc10** is **rrc10RIBHistoric**.
+Topics are separated by collector name, record type (RIB or Update), and whether the data is live (read from RIS Live) or historic (BGPStream data). Each topic name is given by (ihr) + (collectorName) + (rib or update). For example, the separate topic for **RIB** data for **rrc10** is ihr__rrc10_rib**.
 
 ### Record Structure
 Each Kafka record is a JSON object against a BGPRecord. Refer to https://bgpstream.caida.org/docs/api/pybgpstream/_pybgpstream.html for details on each data member of BGPRecord and BGPElem
