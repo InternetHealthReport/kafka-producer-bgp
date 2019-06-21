@@ -116,7 +116,7 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
 def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
 
     stream = getBGPStream("updates",AF,[collector],includedPeers,includedPrefix,startts,endts)
-    topicName = "ihr_" + collector + "_update"
+    topicName = "bgp_" + collector + "_update"
     
     stream.start()
 
