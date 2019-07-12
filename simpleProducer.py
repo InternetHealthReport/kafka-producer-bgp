@@ -1,6 +1,7 @@
 import sys
 import argparse
 from kafka import KafkaProducer
+from kafka.admin import KafkaAdminClient, NewTopic
 from _pybgpstream import BGPStream, BGPRecord
 from datetime import datetime
 from datetime import timedelta
@@ -92,6 +93,16 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
 
     stream = getBGPStream("ribs",AF,[collector],includedPeers,includedPrefix,startts,endts)
     topicName = "ihr_bgp_" + collector + "_rib"
+    admin_client = KafkaAdminClient(
+            bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+            client_id='bgp_producer_admin')
+
+    try:
+        topic_list = [NewTopic(name=topicName, num_partitions=1, replication_factor=0)]
+        admin_client.create_topics(new_topics=topic_list, validate_only=False)
+    except:
+        pass
+
     
     stream.start()
 
@@ -131,6 +142,16 @@ def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,en
 
     stream = getBGPStream("updates",AF,[collector],includedPeers,includedPrefix,startts,endts)
     topicName = "ihr_bgp_" + collector + "_update"
+    admin_client = KafkaAdminClient(
+            bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+            client_id='bgp_producer_admin')
+
+    try:
+        topic_list = [NewTopic(name=topicName, num_partitions=1, replication_factor=0)]
+        admin_client.create_topics(new_topics=topic_list, validate_only=False)
+    except:
+        pass
+
     
     stream.start()
 
@@ -169,7 +190,8 @@ def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,en
 if __name__ == '__main__':
 
     text = "This script pushes BGP data from specified collector(s) \
-for the specified time window to Kafka topic(s). If no start and end time is \
+for the specified time window to Kafka topic(s). The created topics have only \
+one partition in order to make sequential reads easy. If no start and end time is \
 given then it download data for the current hour."
 
     parser = argparse.ArgumentParser(description = text)  
