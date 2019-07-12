@@ -1,22 +1,30 @@
+import sys
+import argparse
+from kafka import KafkaProducer
+from _pybgpstream import BGPStream, BGPRecord
+from datetime import datetime
+from datetime import timedelta
+import msgpack
+
 includedPeers = []
 includedPrefix = []
 
-from kafka import KafkaProducer
-from _pybgpstream import BGPStream, BGPRecord, BGPElem
-from datetime import datetime
-import msgpack
+producer = KafkaProducer(
+    bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+    acks=0, value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
+    batch_size=65536, linger_ms=4000, compression_type='snappy')
 
-producer = KafkaProducer(bootstrap_servers=['kafka1:9092','kafka2:9092','kafka3:9092'], 
-        acks=0, value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
-        batch_size=65536,linger_ms=4000,compression_type='snappy')
 
 def dt2ts(dt):
     return int((dt - datetime(1970, 1, 1)).total_seconds())
 
-def getBGPStream(recordType,AF,collectors,includedPeers,includedPrefix,startts,endts):
+
+def getBGPStream(recordType, AF, collectors, includedPeers, includedPrefix, 
+                 startts, endts):
+
     stream = BGPStream()
 
-    #recordType is supposed to be ribs or updates
+    # recordType is supposed to be ribs or updates
     bgprFilter = "type " + recordType
     
     if AF == 6:
@@ -51,6 +59,7 @@ def getBGPStream(recordType,AF,collectors,includedPeers,includedPrefix,startts,e
 
     return stream
 
+
 def getRecordDict(record):
     recordDict = {}
 
@@ -64,6 +73,7 @@ def getRecordDict(record):
 
     return recordDict
 
+
 def getElementDict(element):
     elementDict = {}
 
@@ -74,6 +84,7 @@ def getElementDict(element):
     elementDict["fields"] = element.fields
 
     return elementDict
+
 
 def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
 
@@ -113,6 +124,7 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
 
     producer.flush()
 
+
 def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
 
     stream = getBGPStream("updates",AF,[collector],includedPeers,includedPrefix,startts,endts)
@@ -151,23 +163,23 @@ def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,en
 
     producer.flush()
 
-import sys
-import argparse
 
 if __name__ == '__main__':
 
-    text = "This script pushes BGPStream data against specified collector(s) for the specified time window to Kafka topic(s)."
+    text = "This script pushes BGP data from specified collector(s) \
+for the specified time window to Kafka topic(s). If no start and end time is \
+given then it download data for the current hour."
 
     parser = argparse.ArgumentParser(description = text)  
     parser.add_argument("--collector","-c",help="Choose collector(s) to push data for")
     parser.add_argument("--startTime","-s",help="Choose start time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
     parser.add_argument("--endTime","-e",help="Choose end time (Format: Y-m-dTH:M:S; Example: 2017-11-06T16:00:00)")
     parser.add_argument("--af","-a",help="Choose 4 for ipv4, 6 for ipv6")
-    parser.add_argument("--type","-t",help="Choose record type: RIB or Update")
+    parser.add_argument("--type","-t",help="Choose record type: rib or update")
 
     args = parser.parse_args() 
 
-    #initialize collectors
+    # initialize collectors
     collectors = []
     if args.collector:
         collectorList = args.collector.split(",")
@@ -175,43 +187,44 @@ if __name__ == '__main__':
     else:
         sys.exit("Collector(s) not specified")
 
-    #initialize time to start
+    # initialize time to start
+    currentTime = datetime.now()
     timeStart = ""
     if args.startTime:
         timeStart = args.startTime
     else:
-        sys.exit("Start time not specified")
+        timeStart = currentTime.replace(microsecond=0, second=0, minute=0)
 
-    #initialize time to end
+    # initialize time to end
     timeEnd = ""
     if args.endTime:
         timeEnd = args.endTime
     else:
-        sys.exit("End time not specified")
+        timeEnd = currentTime.replace(microsecond=0, second=0, minute=0)+timedelta(hours=1)
 
-    #initialize af
+    # initialize af
     if args.af:
         AF = args.af
     else:
         AF = 4
 
-    #initialize recordType
+    # initialize recordType
     recordType = ""
     if args.type:
-        if args.type in ["RIB","Update"]:
+        if args.type in ["rib", "update"]:
             recordType = args.type
         else:
-            sys.exit("Incorrect type specified; Choose from RIB or Update")
+            sys.exit("Incorrect type specified; Choose from rib or update")
     else:
         sys.exit("Record type not specified")
 
     for collector in collectors:
-        if recordType == "RIB":
+        if recordType == "rib":
             print("Downloading RIB data for ",collector)
             pushRIBData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
         
-        if recordType == "Update":
+        if recordType == "update":
             print("Downloading UPDATE data for ",collector)
             pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
 
-
+    producer.close()
