@@ -89,7 +89,7 @@ def getElementDict(element):
 def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
 
     stream = getBGPStream("ribs",AF,[collector],includedPeers,includedPrefix,startts,endts)
-    topicName = "ihr_" + collector + "_rib"
+    topicName = "ihr_bgp_" + collector + "_rib"
     
     stream.start()
 
@@ -128,7 +128,7 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
 def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
 
     stream = getBGPStream("updates",AF,[collector],includedPeers,includedPrefix,startts,endts)
-    topicName = "bgp_" + collector + "_update"
+    topicName = "ihr_bgp_" + collector + "_update"
     
     stream.start()
 
