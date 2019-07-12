@@ -43,10 +43,12 @@ def getBGPStream(recordType, AF, collectors, includedPeers, includedPrefix,
     for p in includedPrefix:
         bgprFilter += " and prefix more %s " % p
 
-    startts = datetime.strptime(startts+"UTC", "%Y-%m-%dT%H:%M:%S%Z")
+    if isinstance(startts, str):
+        startts = datetime.strptime(startts+"UTC", "%Y-%m-%dT%H:%M:%S%Z")
     startts = dt2ts(startts)
 
-    endts = datetime.strptime(endts+"UTC", "%Y-%m-%dT%H:%M:%S%Z")
+    if isinstance(endts, str):
+        endts = datetime.strptime(endts+"UTC", "%Y-%m-%dT%H:%M:%S%Z")
     endts = dt2ts(endts)
 
     currentts = dt2ts(datetime.now())
