@@ -232,7 +232,7 @@ given then it download data for the current hour."
         sys.exit("Collector(s) not specified")
 
     # initialize time to start
-    timeWindow = 15
+    timeWindow = 60
     # currentTime = datetime(2019, 7, 19, 5, 55) #datetime.utcnow()
     currentTime = datetime.utcnow()
     minuteStart = int(currentTime.minute/timeWindow)*timeWindow
