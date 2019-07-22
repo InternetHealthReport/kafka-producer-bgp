@@ -6,15 +6,10 @@ from _pybgpstream import BGPStream, BGPRecord
 from datetime import datetime
 from datetime import timedelta
 import msgpack
+import logging
 
 includedPeers = []
 includedPrefix = []
-
-producer = KafkaProducer(
-    bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
-    acks=0, value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
-    batch_size=65536, linger_ms=4000, compression_type='snappy')
-
 
 def dt2ts(dt):
     return int((dt - datetime(1970, 1, 1)).total_seconds())
@@ -89,7 +84,7 @@ def getElementDict(element):
     return elementDict
 
 
-def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
+def pushRIBData(AF,collector,includedPeers,includedPrefix,startts,endts):
 
     stream = getBGPStream("ribs",AF,[collector],includedPeers,includedPrefix,startts,endts)
     topicName = "ihr_bgp_" + collector + "_rib"
@@ -98,11 +93,17 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
             client_id='bgp_producer_admin')
 
     try:
-        topic_list = [NewTopic(name=topicName, num_partitions=1, replication_factor=0)]
+        topic_list = [NewTopic(name=topicName, num_partitions=1, replication_factor=1)]
         admin_client.create_topics(new_topics=topic_list, validate_only=False)
     except:
         pass
+    admin_client.close()
 
+    producer = KafkaProducer(
+        bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+        # acks=0, 
+        value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
+        linger_ms=1000, compression_type='snappy')
     
     stream.start()
 
@@ -135,11 +136,12 @@ def pushRIBData(producer,AF,collector,includedPeers,includedPrefix,startts,endts
         #producer.send(topicName,recordAsBytes)
         # print("Pushed a record to ",topicName," with timestamp ",recordTimeStamp)
 
-    producer.flush()
+    producer.close()
 
 
-def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,endts):
+def pushUpdateData(AF,collector,includedPeers,includedPrefix,startts,endts):
 
+    endts_unix = dt2ts(endts)
     stream = getBGPStream("updates",AF,[collector],includedPeers,includedPrefix,startts,endts)
     topicName = "ihr_bgp_" + collector + "_update"
     admin_client = KafkaAdminClient(
@@ -147,17 +149,32 @@ def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,en
             client_id='bgp_producer_admin')
 
     try:
-        topic_list = [NewTopic(name=topicName, num_partitions=1, replication_factor=0)]
+        topic_list = [NewTopic(name=topicName, num_partitions=1, replication_factor=1)]
         admin_client.create_topics(new_topics=topic_list, validate_only=False)
-    except:
+    except Exception as e:
+        logging.warning(str(e))
         pass
+    finally:
+        admin_client.close()
 
+    producer = KafkaProducer(
+        bootstrap_servers=['kafka1:9092', 'kafka2:9092', 'kafka3:9092'], 
+        # acks=0, 
+        value_serializer=lambda v: msgpack.packb(v, use_bin_type=True),
+        linger_ms=1000, compression_type='snappy')
     
     stream.start()
 
     rec = BGPRecord()
 
+    last_ts = 0
+
     while stream and stream.get_next_record(rec):
+
+        # Stop if data timestamp equals to end time
+        if rec.time >= endts_unix:
+            break
+
         completeRecord = {}
         completeRecord["rec"] = getRecordDict(rec)
         completeRecord["elements"] = []
@@ -180,12 +197,15 @@ def pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,startts,en
 
         #print("Topic: ",topicName," ,Time: ",recordTimeStamp)
 
-        producer.send(topicName, completeRecord, timestamp_ms=recordTimeStamp)
-        #producer.send(topicName,recordAsBytes)
-        # print("Pushed a record to ",topicName," with timestamp ",recordTimeStamp)
+        if len(completeRecord['elements']):
+            producer.send(topicName, completeRecord, timestamp_ms=recordTimeStamp)
+            #producer.send(topicName,recordAsBytes)
+            if last_ts != recordTimeStamp:
+                logging.warning("Pushed a record to {}, ts={}, len= {}".format(topicName, recordTimeStamp, len(completeRecord['elements'])))
+                # print("Here is the record as a string: ",completeRecord)
+                last_ts = recordTimeStamp
 
-    producer.flush()
-
+    producer.close()
 
 if __name__ == '__main__':
 
@@ -212,19 +232,29 @@ given then it download data for the current hour."
         sys.exit("Collector(s) not specified")
 
     # initialize time to start
-    currentTime = datetime.now()
+    timeWindow = 15
+    # currentTime = datetime(2019, 7, 19, 5, 55) #datetime.utcnow()
+    currentTime = datetime.utcnow()
+    minuteStart = int(currentTime.minute/timeWindow)*timeWindow
     timeStart = ""
     if args.startTime:
         timeStart = args.startTime
     else:
-        timeStart = currentTime.replace(microsecond=0, second=0, minute=0)
+        timeStart = currentTime.replace(microsecond=0, second=0, minute=minuteStart)
 
     # initialize time to end
     timeEnd = ""
     if args.endTime:
         timeEnd = args.endTime
     else:
-        timeEnd = currentTime.replace(microsecond=0, second=0, minute=0)+timedelta(hours=1)
+        timeEnd = currentTime.replace(microsecond=0, second=0, minute=minuteStart)+timedelta(minutes=timeWindow)
+
+
+    FORMAT = '%(asctime)s %(processName)s %(message)s'
+    logging.basicConfig(format=FORMAT, filename='log_%s.log' % timeStart, level=logging.DEBUG, datefmt='%Y-%m-%d %H:%M:%S')
+    logging.info("Started: %s" % sys.argv)
+    logging.info("Arguments: %s" % args)
+    logging.warning('start time: {}, end time: {}'.format(timeStart, timeEnd))
 
     # initialize af
     if args.af:
@@ -244,11 +274,9 @@ given then it download data for the current hour."
 
     for collector in collectors:
         if recordType == "rib":
-            print("Downloading RIB data for ",collector)
-            pushRIBData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
+            logging.warning("Downloading RIB data for {}".format(collector))
+            pushRIBData(AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
         
         if recordType == "update":
-            print("Downloading UPDATE data for ",collector)
-            pushUpdateData(producer,AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
-
-    producer.close()
+            logging.warning("Downloading UPDATE data for {}".format(collector))
+            pushUpdateData(AF,collector,includedPeers,includedPrefix,timeStart,timeEnd)
