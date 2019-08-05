@@ -232,7 +232,7 @@ given then it download data for the current hour."
         sys.exit("Collector(s) not specified")
 
     # initialize time to start
-    timeWindow = 60
+    timeWindow = 15
     # currentTime = datetime(2019, 7, 19, 5, 55) #datetime.utcnow()
     currentTime = datetime.utcnow()
     minuteStart = int(currentTime.minute/timeWindow)*timeWindow
@@ -240,14 +240,14 @@ given then it download data for the current hour."
     if args.startTime:
         timeStart = args.startTime
     else:
-        timeStart = currentTime.replace(microsecond=0, second=0, minute=minuteStart)
+        timeStart = currentTime.replace(microsecond=0, second=0, minute=minuteStart)-timedelta(minutes=timeWindow)
 
     # initialize time to end
     timeEnd = ""
     if args.endTime:
         timeEnd = args.endTime
     else:
-        timeEnd = currentTime.replace(microsecond=0, second=0, minute=minuteStart)+timedelta(minutes=timeWindow)
+        timeEnd = currentTime.replace(microsecond=0, second=0, minute=minuteStart)
 
 
     FORMAT = '%(asctime)s %(processName)s %(message)s'
