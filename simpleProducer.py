@@ -240,14 +240,14 @@ given then it download data for the current hour."
     if args.startTime:
         timeStart = args.startTime
     else:
-        timeStart = currentTime.replace(microsecond=0, second=0, minute=minuteStart)-timedelta(minutes=timeWindow)
+        timeStart = currentTime.replace(microsecond=0, second=0, minute=minuteStart)-timedelta(minutes=2*timeWindow)
 
     # initialize time to end
     timeEnd = ""
     if args.endTime:
         timeEnd = args.endTime
     else:
-        timeEnd = currentTime.replace(microsecond=0, second=0, minute=minuteStart)
+        timeEnd = currentTime.replace(microsecond=0, second=0, minute=minuteStart)-timedelta(minutes=timeWindow)
 
 
     FORMAT = '%(asctime)s %(processName)s %(message)s'
